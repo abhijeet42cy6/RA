@@ -63,6 +63,7 @@ print("✅ OpenAI API Key Loaded Successfully!")
 DEFAULT_MODEL = "gpt-4"
 FALLBACK_MODEL = "gpt-3.5-turbo"
 LARGE_CONTEXT_MODEL = "gpt-4-turbo"  # Model with larger context window
+VISION_MODEL = "gpt-4o-2024"  # Updated vision model as of April 2025
 
 methodology_data = None
 results_data = None
@@ -184,15 +185,42 @@ def process_with_gpt4_vision(image_paths, text_data):
                 ]
             })
 
-        # Call GPT-4 Vision with gpt-4o model
-        response = client.chat.completions.create(
-            model="gpt-4o",
-            messages=messages,
-            max_tokens=1000,
-            temperature=0.7
-        )
-        gpt_output = response.choices[0].message.content if response else "No response from OpenAI."
-        print(f"✅ GPT Vision Response: {gpt_output}")
+        # Call vision model with fallback logic
+        current_model = VISION_MODEL
+        max_retries = 3
+        
+        for attempt in range(max_retries):
+            try:
+                response = client.chat.completions.create(
+                    model=current_model,
+                    messages=messages,
+                    max_tokens=1000,
+                    temperature=0.7
+                )
+                gpt_output = response.choices[0].message.content if response else "No response from OpenAI."
+                print(f"✅ GPT Vision Response: {gpt_output}")
+                break
+            except Exception as e:
+                error_msg = str(e)
+                print(f"⚠️ Vision API error: {error_msg}")
+                
+                # Check for different error types and apply appropriate fallback
+                if "insufficient_quota" in error_msg or "not_available" in error_msg:
+                    if current_model == VISION_MODEL:
+                        print(f"⚠️ Issue with {current_model}, falling back to gpt-4o")
+                        current_model = "gpt-4o"
+                    elif current_model == "gpt-4o":
+                        print(f"⚠️ Issue with gpt-4o, falling back to gpt-4-vision")
+                        current_model = "gpt-4-vision"
+                    else:
+                        raise
+                    continue
+                elif attempt < max_retries - 1:
+                    print(f"⚠️ API error, retrying... ({attempt + 1}/{max_retries})")
+                    continue
+                else:
+                    print(f"❌ All retries failed: {error_msg}")
+                    raise
         
         # Format the structured results message with enhanced styling
         structured_results = f"""
