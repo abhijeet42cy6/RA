@@ -70,6 +70,12 @@ results_data = None
 
 UPLOAD_FOLDER = "backend/uploads"  # Store images in backend
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)  # Ensure folder exists
+# Make sure folder has correct permissions
+try:
+    os.chmod(UPLOAD_FOLDER, 0o777)
+    print(f"✅ Upload folder permissions set: {UPLOAD_FOLDER}")
+except Exception as e:
+    print(f"⚠️ Could not set permissions on upload folder: {e}")
 
 @app.post("/upload-results")
 async def upload_results(
@@ -86,57 +92,84 @@ async def upload_results(
     effect_modifiers_image: Optional[UploadFile] = File(None),
     db: Session = Depends(get_db)
 ):
-    # Save uploaded images
-    saved_files = []
-    for image in [outcome_variables_image, exposure_variables_image, predictors_image, potential_confounders_image, effect_modifiers_image]:
-        if image:
-            file_path = os.path.join(UPLOAD_FOLDER, f"{uuid.uuid4()}_{image.filename}")
-            with open(file_path, "wb") as buffer:
-                shutil.copyfileobj(image.file, buffer)
-            saved_files.append(file_path)
-    
-    # Only process images if there are any uploaded
-    extracted_text = ""
-    if saved_files:
-        extracted_text = process_with_gpt4_vision(saved_files, {
-            "Outcome Variables": outcome_variables_text,
-            "Exposure Variables": exposure_variables_text,
-            "Predictors": predictors_text,
-            "Potential Confounders": potential_confounders_text,
-            "Effect Modifiers": effect_modifiers_text
-        })
-    
-    # Combine form data and extracted text
-    structured_results_message = f"""
-    RESULTS
-    1. Variables:
-    - Outcome Variables: {outcome_variables_text}
-    - Exposure Variables: {exposure_variables_text}
-    - Predictors: {predictors_text}
-    - Potential Confounders: {potential_confounders_text}
-    - Effect Modifiers: {effect_modifiers_text}
-    """
+    try:
+        print(f"✅ Upload request received. Chat ID: {chat_id}")
+        print(f"✅ Upload folder exists: {os.path.exists(UPLOAD_FOLDER)}")
+        print(f"✅ Upload folder is writable: {os.access(UPLOAD_FOLDER, os.W_OK)}")
+        
+        # Save uploaded images
+        saved_files = []
+        for i, image in enumerate([outcome_variables_image, exposure_variables_image, predictors_image, potential_confounders_image, effect_modifiers_image]):
+            if image:
+                try:
+                    print(f"✅ Processing image #{i+1}: {image.filename}")
+                    # Use absolute path for file storage
+                    file_path = os.path.abspath(os.path.join(UPLOAD_FOLDER, f"{uuid.uuid4()}_{image.filename}"))
+                    with open(file_path, "wb") as buffer:
+                        shutil.copyfileobj(image.file, buffer)
+                    saved_files.append(file_path)
+                    print(f"✅ Saved image to: {file_path}")
+                except Exception as file_error:
+                    print(f"❌ Error saving file #{i+1}: {str(file_error)}")
+                    raise HTTPException(status_code=500, detail=f"File upload error: {str(file_error)}")
+        
+        # Only process images if there are any uploaded
+        extracted_text = ""
+        if saved_files:
+            try:
+                extracted_text = process_with_gpt4_vision(saved_files, {
+                    "Outcome Variables": outcome_variables_text,
+                    "Exposure Variables": exposure_variables_text,
+                    "Predictors": predictors_text,
+                    "Potential Confounders": potential_confounders_text,
+                    "Effect Modifiers": effect_modifiers_text
+                })
+            except Exception as vision_error:
+                print(f"❌ Error in vision processing: {str(vision_error)}")
+                # Continue with the request even if vision processing fails
+                extracted_text = f"<p>Error processing images: {str(vision_error)}</p>"
+        
+        # Combine form data and extracted text
+        structured_results_message = f"""
+        RESULTS
+        1. Variables:
+        - Outcome Variables: {outcome_variables_text}
+        - Exposure Variables: {exposure_variables_text}
+        - Predictors: {predictors_text}
+        - Potential Confounders: {potential_confounders_text}
+        - Effect Modifiers: {effect_modifiers_text}
+        """
 
-    # Only add image data section if there are images
-    if extracted_text:
-        structured_results_message += f"""
+        # Only add image data section if there are images
+        if extracted_text:
+            structured_results_message += f"""
 
-    2. Extracted Image Data:
-    {extracted_text}
-    """
+        2. Extracted Image Data:
+        {extracted_text}
+        """
 
-    # Process with GPT and store in database
-    gpt_response = process_message("Results", structured_results_message, chat_id, db)
-    new_message = Message(
-        chat_id=chat_id,
-        role="bot - Results",
-        text=gpt_response,
-        timestamp=datetime.utcnow()
-    )
-    db.add(new_message)
-    db.commit() 
-
-    return JSONResponse({"response": gpt_response})
+        # Process with GPT and store in database
+        try:
+            gpt_response = process_message("Results", structured_results_message, chat_id, db)
+            new_message = Message(
+                chat_id=chat_id,
+                role="bot - Results",
+                text=gpt_response,
+                timestamp=datetime.utcnow()
+            )
+            db.add(new_message)
+            db.commit() 
+            print("✅ Results processed and saved to database")
+            return JSONResponse({"response": gpt_response})
+        except Exception as db_error:
+            print(f"❌ Database error: {str(db_error)}")
+            raise HTTPException(status_code=500, detail=f"Database error: {str(db_error)}")
+            
+    except Exception as e:
+        print(f"❌ Unhandled exception in upload_results: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Server error: {str(e)}")
 
 
 def encode_image(image_path):
