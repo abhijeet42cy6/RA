@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}My App{% endblock %}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/frontend/config.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+</head>
+    <body class="bg-gray-100 h-screen flex flex-col" x-data="{ isLoggedIn: false }" x-init="isLoggedIn = !!localStorage.getItem('token')">
+        
+        <!-- Navigation Bar --> 
+        <nav class="bg-white shadow-md p-4 flex justify-between items-center">
+            <a href="/" class="text-lg font-semibold">Research Assistant</a>
+            <div>
+                <template x-if="!isLoggedIn">
+                    <a href="/login" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md transition-colors">Login</a>
+                </template>
+                <template x-if="isLoggedIn">
+                    <button @click="handleLogout()" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-md transition-colors">Logout</button>
+                </template>
+            </div>
+        </nav>
+
+        <!-- Page Content (Full Height) -->
+        <div class="flex-1 flex flex-col">
+            {% block content %}{% endblock %}
+        </div>
+
+        <script>
+            function handleLogout() {
+                fetch('/logout', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    localStorage.removeItem('token');
+                    window.location.href = data.redirect || '/';
+                })
+                .catch(error => {
+                    console.error('Logout error:', error);
+                    // Fallback redirect even if there's an error
+                    localStorage.removeItem('token');
+                    window.location.href = '/';
+                });
+            }
+        </script>
+        
+    </body>
+</html>

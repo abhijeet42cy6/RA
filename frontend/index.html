@@ -1,0 +1,1503 @@
+{% extends "layout.html" %}
+
+{% block title %}Research Assistant{% endblock %}
+
+{% block content %}
+    <style>
+        /* Alpine x-cloak helper to hide elements until Alpine is initialized */
+        [x-cloak] { display: none !important; }
+ 
+        @keyframes typing {
+            0%, 100% { transform: translateY(0); opacity: 0.4; }
+            50% { transform: translateY(-10px); opacity: 1; }
+        }
+        .typing {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 6px;
+            padding: 10px;
+            background-color: #f0f0f0;
+            border-radius: 15px;
+            margin: 10px 0;
+        }
+        .dot {
+            width: 8px;
+            height: 8px;
+            background-color: #666;
+            border-radius: 50%;
+            animation: typing 1.4s infinite ease-in-out;
+        }
+        .dot:nth-child(1) { animation-delay: 0s; }
+        .dot:nth-child(2) { animation-delay: 0.2s; }
+        .dot:nth-child(3) { animation-delay: 0.4s; }
+        /* Remove display: none; from .modal so that Alpine controls it */
+        .modal {
+            position: fixed;
+            z-index: 9999;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+        }
+        .modal-content {
+            background-color: white;
+            padding: 20px;
+            margin: 10% auto;
+            width: 50%;
+            border-radius: 8px;
+            max-height: 80vh;      
+            overflow-y: auto;
+        }
+        
+        /* Enhanced Navigation Bar Styles */
+        .nav-container {
+            background: linear-gradient(to right, #4f46e5, #6366f1);
+            box-shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.05);
+            padding: 0.5rem 1.5rem; /* Reduced padding */
+            transition: all 0.3s ease;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .nav-button {
+            background: rgba(255, 255, 255, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+            padding: 0.5rem 1rem; /* Reduced padding */
+            border-radius: 0.5rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(5px);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.875rem; /* Smaller font */
+        }
+        
+        .nav-button:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        
+        .nav-button svg {
+            transition: transform 0.3s ease;
+        }
+        
+        .nav-button:hover svg {
+            transform: rotate(90deg);
+        }
+        
+        .nav-title {
+            color: white;
+            font-size: 1.25rem;
+            font-weight: 600;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+            letter-spacing: 0.025em;
+        }
+        
+        /* Enhanced Stages Sidebar Styles */
+        .stages-sidebar {
+            background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+            border-right: 1px solid #e2e8f0;
+            padding: 1rem;
+            width: 240px;
+            transition: all 0.3s ease;
+        }
+        
+        .stages-title {
+            font-size: 1rem;
+            font-weight: 600;
+            color: #1e293b;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid #e2e8f0;
+            letter-spacing: 0.025em;
+        }
+        
+        .stage-button {
+            width: 100%;
+            padding: 0.625rem 0.75rem; /* Reduced padding */
+            margin-bottom: 0.375rem; /* Reduced margin */
+            border-radius: 0.5rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            text-align: left;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: #64748b;
+            background: transparent;
+            font-size: 0.875rem; /* Smaller font */
+        }
+        
+        .stage-button.active {
+            background: linear-gradient(135deg, #4f46e5, #6366f1);
+            color: white;
+            box-shadow: 0 4px 6px -1px rgba(99, 102, 241, 0.2);
+        }
+        
+        .stage-button:not(:disabled):hover {
+            background: #f1f5f9;
+            color: #1e293b;
+            transform: translateX(4px);
+        }
+        
+        .stage-button.active:hover {
+            background: linear-gradient(135deg, #4f46e5, #6366f1);
+            color: white;
+            transform: translateX(4px);
+        }
+        
+        .stage-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            background: #f1f5f9;
+        }
+        
+        .stage-icon {
+            width: 18px; /* Smaller icon */
+            height: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            background: currentColor;
+            opacity: 0.2;
+        }
+        
+        .stage-button.active .stage-icon {
+            background: white;
+            opacity: 1;
+        }
+        
+        .stage-number {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: inherit;
+        }
+        
+        .stage-progress {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            height: 2px;
+            background: #4f46e5;
+            transition: width 0.3s ease;
+        }
+
+        /* Add these new styles for chat history */
+        .sidebar-toggle {
+            position: absolute;
+            right: -40px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: #4f46e5;
+            color: white;
+            padding: 0.5rem;
+            border-radius: 0 0.5rem 0.5rem 0;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            writing-mode: vertical-rl;
+            text-orientation: mixed;
+        }
+
+        .sidebar-toggle:hover {
+            background: #6366f1;
+        }
+
+        .chat-history-panel {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background: #ffffff;
+            transform: translateX(-100%);
+            transition: transform 0.3s ease;
+            padding: 1.5rem;
+            overflow-y: auto;
+        }
+
+        .chat-history-panel.active {
+            transform: translateX(0);
+        }
+
+        .history-item {
+            padding: 1rem;
+            border: 1px solid #e2e8f0;
+            border-radius: 0.75rem;
+            margin-bottom: 0.75rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            color: #1e293b;
+        }
+
+        .history-item:hover {
+            transform: translateX(4px);
+            border-color: #4f46e5;
+            background: #f8fafc;
+        }
+
+        .history-item.active {
+            background: linear-gradient(135deg, #4f46e5, #6366f1);
+            color: white;
+            border-color: transparent;
+        }
+
+        .history-icon {
+            width: 2.5rem;
+            height: 2.5rem;
+            border-radius: 50%;
+            background: currentColor;
+            opacity: 0.1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .history-item.active .history-icon {
+            opacity: 0.2;
+        }
+
+        .history-details {
+            flex: 1;
+        }
+
+        .history-title {
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+            font-size: 0.875rem;
+            line-height: 1.25;
+        }
+
+        .history-date {
+            font-size: 0.75rem;
+            opacity: 0.7;
+        }
+
+        .history-progress {
+            font-size: 0.75rem;
+            margin-top: 0.25rem;
+            color: #6366f1;
+        }
+
+        .history-item.active .history-progress {
+            color: white;
+        }
+
+        /* Dropdown Styles */
+        .dropdown {
+            position: relative;
+            display: inline-block;
+            z-index: 1000;
+        }
+
+        .dropdown-button {
+            background: #ffffff;
+            border: 2px solid #e2e8f0;
+            color: #1e293b;
+            padding: 0.75rem 1.25rem;
+            border-radius: 0.5rem;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            cursor: pointer;
+            min-width: 160px;
+            justify-content: space-between;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .dropdown-content {
+            position: absolute;
+            top: calc(100% + 5px);
+            right: 0;
+            background: white;
+            min-width: 200px;
+            border-radius: 0.5rem;
+            border: 2px solid #e2e8f0;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            display: none;
+            z-index: 1000;
+        }
+
+        .dropdown-content.show {
+            display: block;
+        }
+
+        .dropdown-item {
+            padding: 1rem 1.25rem;
+            border-bottom: 2px solid #f1f5f9;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-weight: 500;
+        }
+
+        .dropdown-item:last-child {
+            border-bottom: none;
+        }
+
+        .dropdown-item:hover {
+            background-color: #f8fafc;
+            color: #4f46e5;
+        }
+
+        .dropdown-item.active {
+            background-color: #4f46e5;
+            color: white;
+        }
+
+        #downloadBtn {
+            display: none;
+            margin-top: 1rem;
+            transition: all 0.3s ease;
+        }
+        
+        #downloadBtn:hover {
+            transform: scale(1.05);
+        }
+
+        .download-options {
+            position: absolute;
+            z-index: 10;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .download-options button {
+            transition: all 0.3s ease;
+        }
+        
+        .download-options button:hover {
+            transform: translateY(-2px);
+        }
+
+        /* Paper link styles */
+        .paper-link {
+            color: #2563eb;
+            text-decoration: none;
+            padding: 2px 6px;
+            border-radius: 4px;
+            background-color: #eff6ff;
+            transition: all 0.2s ease;
+            display: inline-block;
+            margin: 0 2px;
+        }
+
+        .paper-link:hover {
+            background-color: #dbeafe;
+            color: #1d4ed8;
+            text-decoration: underline;
+        }
+
+        .section-references, .references {
+            margin: 15px 0;
+            padding: 10px;
+            background-color: #f8fafc;
+            border-left: 3px solid #2563eb;
+            border-radius: 4px;
+        }
+
+        .section-references a, .references a {
+            margin-left: 5px;
+        }
+
+        /* Results Form Styling */
+        .results-container {
+            background: #ffffff;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            padding: 25px;
+            margin: 20px 0;
+            font-family: 'Arial', sans-serif;
+        }
+
+        .results-title {
+            color: #2c3e50;
+            font-size: 24px;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #3498db;
+            text-align: center;
+        }
+
+        .variables-section, .image-analysis-section {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 15px 0;
+        }
+
+        .variables-section h3, .image-analysis-section h3 {
+            color: #2c3e50;
+            font-size: 18px;
+            margin-bottom: 15px;
+        }
+
+        .variables-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .variables-list li {
+            padding: 10px 0;
+            border-bottom: 1px solid #e9ecef;
+            display: flex;
+            align-items: flex-start;
+        }
+
+        .variables-list li:last-child {
+            border-bottom: none;
+        }
+
+        .variables-list strong {
+            color: #3498db;
+            min-width: 180px;
+            display: inline-block;
+            margin-right: 10px;
+        }
+
+        .analysis-content {
+            line-height: 1.6;
+            color: #34495e;
+        }
+
+        /* Add hover effects */
+        .variables-list li:hover {
+            background: #e9ecef;
+            border-radius: 5px;
+            transition: background 0.3s ease;
+        }
+
+        /* Responsive design */
+        @media (max-width: 768px) {
+            .variables-list strong {
+                min-width: 120px;
+            }
+            
+            .results-container {
+                padding: 15px;
+            }
+        }
+    </style>
+
+    <div class="h-screen flex flex-col" x-data="chatApp()" x-init="init()">
+        <!-- Methodology Form Modal inside the Alpine component -->
+        <div id="methodologyForm" class="modal" x-show="showMethodologyForm" x-cloak>
+            <div class="modal-content bg-white p-8 rounded-xl shadow-2xl">
+                <h2 class="text-2xl font-semibold text-gray-800 mb-6 pb-3 border-b-2 border-gray-200">Research Methodology</h2>
+                
+                <div class="space-y-5">
+                    <div class="form-group">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Study Design</label>
+                        <input type="text" 
+                               x-model="methodology.studyDesign"
+                               class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
+                               placeholder="Enter the study design...">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Location of Study</label>
+                        <input type="text" 
+                               x-model="methodology.location"
+                               class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
+                               placeholder="Enter the study location...">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Exclusion Criteria</label>
+                        <input type="text" 
+                               x-model="methodology.exclusion"
+                               class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
+                               placeholder="Specify exclusion criteria...">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Inclusion Criteria</label>
+                        <input type="text" 
+                               x-model="methodology.inclusion"
+                               class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
+                               placeholder="Specify inclusion criteria...">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Source of Participants</label>
+                        <input type="text" 
+                               x-model="methodology.source_of_participants"
+                               class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
+                               placeholder="Describe participant recruitment source...">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Follow-up Method</label>
+                        <input type="text" 
+                               x-model="methodology.follow_up_method"
+                               class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
+                               placeholder="Describe follow-up methodology...">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Controls Selection</label>
+                        <input type="text" 
+                               x-model="methodology.controls_selection"
+                               class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
+                               placeholder="Describe control group selection...">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Bias Reduction Method</label>
+                        <input type="text" 
+                               x-model="methodology.bias_reduction_method"
+                               class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
+                               placeholder="Describe methods to reduce bias...">
+                    </div>
+
+                    <button @click="submitMethodology()" 
+                            class="w-full mt-6 px-6 py-3 bg-gradient-to-r from-indigo-600 to-indigo-500 text-white font-medium rounded-lg shadow-lg hover:shadow-xl hover:transform hover:-translate-y-0.5 transition-all">
+                        Submit Methodology
+                </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Results Form Modal -->
+        <div id="resultsForm" class="modal" x-show="showResultsForm" x-cloak>
+            <div class="modal-content bg-white p-8 rounded-xl shadow-2xl max-w-4xl mx-auto">
+                <h2 class="text-2xl font-semibold text-gray-800 mb-6 pb-3 border-b-2 border-gray-200">Research Results</h2>
+
+                <!-- Variables Section -->
+                <div class="space-y-6">
+                    <div class="bg-gray-50 p-6 rounded-lg">
+                        <h3 class="text-xl font-semibold text-gray-700 mb-4">Variables Analysis</h3>
+                        <p class="text-sm text-gray-600 mb-4">Note: Variables can belong to multiple categories. All fields are optional.</p>
+
+                        <!-- Variables Grid -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <!-- Outcome Variables -->
+                            <div class="variable-group">
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Outcome Variables</label>
+                                <input type="text" 
+                                       x-model="results.outcome_variables" 
+                                       class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
+                                       placeholder="Enter outcome variables...">
+                                <input type="file" 
+                                       @change="results.outcome_image = $event.target.files[0]"
+                                       class="mt-2 text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100">
+                            </div>
+
+                            <!-- Exposure Variables -->
+                            <div class="variable-group">
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Exposure Variables</label>
+                                <input type="text" 
+                                       x-model="results.exposure_variables" 
+                                       class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
+                                       placeholder="Enter exposure variables...">
+                                <input type="file" 
+                                       @change="results.exposure_image = $event.target.files[0]"
+                                       class="mt-2 text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100">
+                            </div>
+
+                            <!-- Predictors -->
+                            <div class="variable-group">
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Predictors</label>
+                                <input type="text" 
+                                       x-model="results.predictors" 
+                                       class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
+                                       placeholder="Enter predictors...">
+                                <input type="file" 
+                                       @change="results.predictors_image = $event.target.files[0]"
+                                       class="mt-2 text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100">
+                            </div>
+
+                            <!-- Potential Confounders -->
+                            <div class="variable-group">
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Potential Confounders</label>
+                                <input type="text" 
+                                       x-model="results.confounders" 
+                                       class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
+                                       placeholder="Enter potential confounders...">
+                                <input type="file" 
+                                       @change="results.confounders_image = $event.target.files[0]"
+                                       class="mt-2 text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100">
+                            </div>
+
+                            <!-- Effect Modifiers -->
+                            <div class="variable-group">
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Effect Modifiers</label>
+                                <input type="text" 
+                                       x-model="results.effect_modifiers" 
+                                       class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
+                                       placeholder="Enter effect modifiers...">
+                                <input type="file" 
+                                       @change="results.effect_modifiers_image = $event.target.files[0]"
+                                       class="mt-2 text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Hypotheses Section -->
+                    <div class="bg-gray-50 p-6 rounded-lg">
+                        <h3 class="text-xl font-semibold text-gray-700 mb-4">Hypotheses</h3>
+                        
+                        <!-- Hypothesis Cards -->
+                        <div class="space-y-6">
+                            <!-- Hypothesis 1 -->
+                            <div class="bg-white p-4 rounded-lg shadow-sm">
+                                <h4 class="font-semibold text-gray-800 mb-3">Hypothesis 1</h4>
+                                <div class="space-y-3">
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Null Hypothesis</label>
+                                        <input type="text" 
+                                               x-model="results.hypothesis1_null" 
+                                               class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
+                                               placeholder="Enter null hypothesis...">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Alternate Hypothesis</label>
+                                        <input type="text" 
+                                               x-model="results.hypothesis1_alt" 
+                                               class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
+                                               placeholder="Enter alternate hypothesis...">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Analysis Plan</label>
+                                        <input type="text" 
+                                               x-model="results.hypothesis1_analysis" 
+                                               class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
+                                               placeholder="Describe variables and tests to be used...">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Hypothesis 2 -->
+                            <div class="bg-white p-4 rounded-lg shadow-sm">
+                                <h4 class="font-semibold text-gray-800 mb-3">Hypothesis 2</h4>
+                                <div class="space-y-3">
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Null Hypothesis</label>
+                                        <input type="text" 
+                                               x-model="results.hypothesis2_null" 
+                                               class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
+                                               placeholder="Enter null hypothesis...">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Alternate Hypothesis</label>
+                                        <input type="text" 
+                                               x-model="results.hypothesis2_alt" 
+                                               class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
+                                               placeholder="Enter alternate hypothesis...">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Analysis Plan</label>
+                                        <input type="text" 
+                                               x-model="results.hypothesis2_analysis" 
+                                               class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
+                                               placeholder="Describe variables and tests to be used...">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Hypothesis 3 -->
+                            <div class="bg-white p-4 rounded-lg shadow-sm">
+                                <h4 class="font-semibold text-gray-800 mb-3">Hypothesis 3</h4>
+                                <div class="space-y-3">
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Null Hypothesis</label>
+                                        <input type="text" 
+                                               x-model="results.hypothesis3_null" 
+                                               class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
+                                               placeholder="Enter null hypothesis...">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Alternate Hypothesis</label>
+                                        <input type="text" 
+                                               x-model="results.hypothesis3_alt" 
+                                               class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
+                                               placeholder="Enter alternate hypothesis...">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Analysis Plan</label>
+                                        <input type="text" 
+                                               x-model="results.hypothesis3_analysis" 
+                                               class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
+                                               placeholder="Describe variables and tests to be used...">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Additional Instructions -->
+                    <div class="bg-gray-50 p-6 rounded-lg">
+                        <h3 class="text-xl font-semibold text-gray-700 mb-4">Additional Instructions</h3>
+                        <textarea 
+                            x-model="results.prompt" 
+                            class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all h-24"
+                            placeholder="Add any additional instructions or notes..."></textarea>
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="flex justify-end space-x-4 mt-8">
+                    <button @click="closeResultsForm()" 
+                            class="px-6 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 transition-all">
+                        Cancel
+                    </button>
+                    <button @click="submitResults()" 
+                            class="px-6 py-2 rounded-lg bg-gradient-to-r from-indigo-600 to-indigo-500 text-white hover:from-indigo-700 hover:to-indigo-600 transition-all shadow-lg hover:shadow-xl">
+                        Submit Results
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <nav class="nav-container flex justify-between items-center">
+            <div class="flex items-center space-x-4">
+                <button @click="newChat" class="nav-button">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+                    </svg>
+                    New Chat
+                </button>
+                <span class="nav-title">Research Assistant</span>
+            </div>
+            <div class="flex items-center space-x-4">
+                <div class="text-white text-sm font-medium">
+                    Stage <span x-text="currentStage + 1"></span> of <span x-text="roles.length"></span>
+                </div>
+            </div>
+        </nav>
+
+        <div class="flex flex-1 overflow-hidden">
+            <!-- Enhanced Stages Sidebar with History Toggle -->
+            <div class="stages-sidebar relative">
+                <h2 class="stages-title">Research Stages</h2>
+                
+                <!-- Research Stages Panel -->
+                <div class="h-full">
+                <template x-for="(role, index) in roles" :key="index">
+                    <button @click="setRole(index)" 
+                            :disabled="index > currentStage"
+                                class="stage-button"
+                            :class="{ 
+                                    'active': currentRole === index, 
+                                    'disabled': index > currentStage - 1 
+                            }">
+                            <div class="stage-icon">
+                                <span class="stage-number" x-text="index + 1"></span>
+                            </div>
+                        <span x-text="role.name"></span>
+                            <div class="stage-progress" :style="index <= currentStage ? 'width: 100%' : 'width: 0%'"></div>
+                    </button>
+                </template>
+                </div>
+            </div>
+              
+              <!-- Chat Window -->
+              <div class="flex-1 flex flex-col p-4">
+                <!-- Messages Container -->
+                <div class="flex-1 overflow-y-auto space-y-3 p-3 flex flex-col items-center" id="messages">
+                  <template x-for="(msg, index) in chatHistory" :key="index">
+                        <div class="p-3 rounded-lg w-fit max-w-xl prose prose-sm"
+                            :class="msg.role.includes('bot') ? 'bg-gray-100 self-start shadow-sm' : 'bg-blue-100 self-end shadow-sm'">
+                            <div class="prose prose-headings:font-bold prose-headings:text-black prose-strong:font-semibold prose-strong:text-black prose-code:text-sm prose-code:bg-gray-200 prose-code:px-1 prose-code:rounded max-w-full break-words" x-html="markdownToHtml(msg.text)"></div>
+                    </div>
+                  </template>
+              
+                  <!-- Typing Effect Bubble for Bot Response -->
+                    <div x-show="botTyping" 
+                         class="p-3 rounded-lg w-fit max-w-xs bg-gray-100 self-start shadow-sm" 
+                         x-transition:enter="transition ease-out duration-300"
+                         x-transition:enter-start="opacity-0 transform -translate-y-2"
+                         x-transition:enter-end="opacity-100 transform translate-y-0">
+                    <div class="typing">
+                      <div class="dot"></div>
+                      <div class="dot"></div>
+                      <div class="dot"></div>
+                    </div>
+                  </div>                  
+                </div>
+
+                <!-- Input Box -->
+                <div class="flex gap-2 mt-4">
+                    <template x-if="roles && currentRole !== undefined && roles[currentRole] && ['Introduction', 'Review'].includes(roles[currentRole].gpt_name)">
+                        <div class="flex gap-2 w-full">
+                            <input type="text" x-model="message" placeholder="Type a message..." class="flex-1 p-2 border rounded-lg">
+                            <button @click="sendMessage" class="bg-blue-500 text-white px-4 py-2 rounded-md"
+                                    :disabled="sending || !message.trim()">
+                                <span x-show="!sending">Send</span>
+                                <span x-show="sending">...</span>
+                            </button>
+                        </div>
+                    </template>
+
+                    <!-- Other form buttons -->
+                    <template x-if="roles && currentRole !== undefined && roles[currentRole] && roles[currentRole].gpt_name === 'Methodology'">
+                        <button @click="openMethodologyForm()" 
+                                class="w-full bg-gradient-to-r from-indigo-600 to-indigo-500 text-white px-6 py-3 rounded-lg shadow-lg hover:shadow-xl hover:transform hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+                            </svg>
+                            Launch Methodology Form
+                        </button>
+                    </template>
+                    
+                    <template x-if="roles && currentRole !== undefined && roles[currentRole] && roles[currentRole].gpt_name === 'Results'">
+                        <button @click="openResultsForm()" 
+                                class="w-full bg-gradient-to-r from-indigo-600 to-indigo-500 text-white px-6 py-3 rounded-lg shadow-lg hover:shadow-xl hover:transform hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                            </svg>
+                            Launch Results Form
+                        </button>
+                    </template>
+                    
+                
+                    <template x-if="roles && currentRole !== undefined && roles[currentRole] && ['Discussion', 'References', 'Conclusion', 'Abstract'].includes(roles[currentRole].gpt_name) && !allStagesCompleted">
+                        <button @click="sendMessage" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 w-full flex items-center justify-center gap-2">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                            </svg>
+                            Generate Next Section
+                        </button>
+                    </template>
+
+                    <!-- Download Button - Show when all stages are completed -->
+                    <template x-if="allStagesCompleted">
+                        <div class="flex gap-2 w-full">
+                            <button @click="downloadPaper" 
+                                    class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 w-full flex items-center justify-center gap-2">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                                </svg>
+                                Download Research Paper
+                            </button>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </div>
+
+        <!-- Add marked.js library -->
+        <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+        <script>
+            function markdownToHtml(text) {
+                if (!text) return '';
+                // Configure marked options for better rendering
+                marked.setOptions({
+                    gfm: true, // GitHub Flavored Markdown
+                    breaks: true, // Add <br> on single line breaks
+                    headerIds: true,
+                    mangle: false,
+                    sanitize: false,
+                    smartLists: true,
+                    smartypants: true,
+                    xhtml: false
+                });
+                return marked.parse(text);
+            }
+        
+            async function checkAuth() {
+                const token = localStorage.getItem("token");
+        
+                if (!token) {
+                    console.log("❌ No token found, redirecting...");
+                    window.location.href = "/";
+                    return;
+                }
+        
+                let response = await fetch("/chat-ui", {
+                    method: "GET",
+                    headers: { 
+                        "Authorization": `Bearer ${token}`,
+                        "Content-Type": "application/json"
+                    }
+                });
+        
+                console.log("🔍 Auth check response:", response.status);
+        
+                if (response.redirected) {
+                    console.log("❌ Redirect detected, going back to login.");
+                    window.location.href = response.url;
+                }
+            }
+        
+            checkAuth();  // ✅ Run on page load
+
+            function chatApp() {
+                return {
+                    message: "",
+                    chatHistory: [],
+                    currentChatId: null,
+                    currentRole: 0,
+                    currentStage: 0,
+                    sending: false,
+                    botTyping: false,
+                    showHistory: false,
+                    chatHistoryList: [],
+                    showMethodologyForm: false,
+                    showResultsForm: false,
+                    allStagesCompleted: false,
+                    downloadUrl: '',
+                    showDownloadOptions: false,
+                    roles: [
+                        { name: "Introduction", gpt_name: "Introduction", dependencies: [] },
+                        { name: "Review", gpt_name: "Review", dependencies: ["Introduction"] },
+                        { name: "Methodology", gpt_name: "Methodology", dependencies: ["Introduction", "Review"] },
+                        { name: "Results", gpt_name: "Results", dependencies: ["Introduction", "Review", "Methodology"] },
+                        { name: "Discussion", gpt_name: "Discussion", dependencies: ["Introduction", "Review", "Methodology", "Results"] },
+                        { name: "References", gpt_name: "References", dependencies: ["Review", "Methodology", "Results", "Discussion"] },
+                        { name: "Conclusion", gpt_name: "Conclusion", dependencies: ["Introduction", "Review", "Methodology", "Results", "Discussion", "References"] },
+                        { name: "Abstract", gpt_name: "Abstract", dependencies: ["Introduction", "Review", "Methodology", "Results", "Discussion", "References", "Conclusion"] },
+                    ],
+
+                    init() {
+                        // Initialize currentRole and currentStage
+                        this.currentRole = 0;
+                        this.currentStage = 0;
+                        this.loadChatHistory();
+                    },
+
+                    // Initialize with stored data if available
+                    methodology: JSON.parse(localStorage.getItem('methodology_data')) || {
+                        studyDesign: "",
+                        location: "",
+                        exclusion: "",
+                        inclusion: "",
+                        source_of_participants: "",
+                        follow_up_method: "",
+                        controls_selection: "",
+                        bias_reduction_method: ""
+                    },
+
+                    results: JSON.parse(localStorage.getItem('results_data')) || {
+                        outcome_variables: "",
+                        exposure_variables: "",
+                        predictors: "",
+                        confounders: "",
+                        effect_modifiers: "",
+                        hypothesis1_null: "",
+                        hypothesis1_alt: "",
+                        hypothesis1_analysis: "",
+                        hypothesis2_null: "",
+                        hypothesis2_alt: "",
+                        hypothesis2_analysis: "",
+                        hypothesis3_null: "",
+                        hypothesis3_alt: "",
+                        hypothesis3_analysis: "",
+                        prompt: "",
+                        outcome_image: null,
+                        exposure_image: null,
+                        predictors_image: null,
+                        confounders_image: null,
+                        effect_modifiers_image: null
+                    },
+
+                    // Save form data when updated
+                    saveMethodologyData() {
+                        localStorage.setItem('methodology_data', JSON.stringify(this.methodology));
+                    },
+
+                    saveResultsData() {
+                        const resultsToSave = {...this.results};
+                        // Remove image objects before saving
+                        delete resultsToSave.outcome_image;
+                        delete resultsToSave.exposure_image;
+                        delete resultsToSave.predictors_image;
+                        delete resultsToSave.confounders_image;
+                        delete resultsToSave.effect_modifiers_image;
+                        localStorage.setItem('results_data', JSON.stringify(resultsToSave));
+                    },
+
+                    openMethodologyForm() {
+                        console.log("🟢 Opening Methodology Form");
+                        this.showMethodologyForm = true;
+                    },
+
+                    closeMethodologyForm() {
+                        console.log("🔴 Closing Methodology Form");
+                        this.showMethodologyForm = false;
+                    },
+
+                    openResultsForm() {
+                        console.log("🟢 Opening Results Form");
+                        this.showResultsForm = true;
+                    },
+                    closeResultsForm() {
+                        console.log("🔴 Closing Results Form");
+                        this.showResultsForm = false;
+                    },
+
+                    async processImagesAndExtractText() {
+                        console.log("📤 Uploading images for processing...");
+                        let formData = new FormData();
+                        
+                        // Append chat_id as required by the backend
+                        formData.append("chat_id", localStorage.getItem("currentChatId"));
+                        
+                        if (this.results.outcome_image) formData.append("outcome_variables_image", this.results.outcome_image);
+                        if (this.results.exposure_image) formData.append("exposure_variables_image", this.results.exposure_image);
+                        if (this.results.predictors_image) formData.append("predictors_image", this.results.predictors_image);
+                        if (this.results.confounders_image) formData.append("potential_confounders_image", this.results.confounders_image);
+                        if (this.results.effect_modifiers_image) formData.append("effect_modifiers_image", this.results.effect_modifiers_image);
+
+                        try {
+                            let token = localStorage.getItem("token");
+                            let response = await fetch("/upload-results", {
+                                method: "POST",
+                                headers: { "Authorization": `Bearer ${token}` },
+                                body: formData
+                            });
+                            let data = await response.json();
+                            console.log("✅ Extracted Image Text:", data.response);
+                            return data.response || "";
+                        } catch (error) {
+                            console.error("❌ Error processing images:", error);
+                            return "";
+                        }
+                    },
+
+                    async submitMethodology() {
+                        try {
+                            // Disable form immediately
+                            this.showMethodologyForm = false;
+                            this.botTyping = true;
+
+                            // Calculate filled fields
+                            const totalFields = 8; // Total number of fields in methodology form
+                            const filledFields = Object.values(this.methodology).filter(value => value.trim() !== "").length;
+                            
+                            // Add summary message to chat history
+                            this.chatHistory.push({
+                                role: "system",
+                                text: `Methodology form submitted with ${filledFields}/${totalFields} fields filled out.`
+                            });
+
+                            const payload = {
+                                chat_id: this.currentChatId,
+                                gpt_name: this.roles[this.currentRole].gpt_name,
+                                message: JSON.stringify(this.methodology)
+                            };
+
+                            console.log("📤 Submitting methodology data:", payload);
+
+                            try {
+                                let response = await fetch("/chat", {
+                                    method: "POST",
+                                    headers: {
+                                        "Content-Type": "application/json",
+                                        "Authorization": `Bearer ${localStorage.getItem("token")}`
+                                    },
+                                    body: JSON.stringify(payload)
+                                });
+
+                                let data = await response.json();
+                                console.log("✅ Methodology submitted successfully:", data);
+
+                                // Use typing effect for the response
+                                await this.simulateTyping(`bot - ${this.roles[this.currentRole].gpt_name}`, data.response);
+
+                                // Update stage progression
+                                this.currentStage = Math.max(this.currentStage, this.currentRole + 1);
+                                this.currentRole += 1;
+                                console.log("▶️ Switched to:", this.roles[this.currentRole].gpt_name);
+                            } catch (error) {
+                                console.error("❌ Error submitting methodology:", error);
+                                alert("❌ Failed to submit methodology.");
+                                this.showMethodologyForm = true; // Re-enable form on error
+                            }
+                        } catch (error) {
+                            console.error("❌ Error in submitMethodology:", error);
+                            alert("Failed to submit methodology. Please try again.");
+                            this.showMethodologyForm = true; // Re-enable form on error
+                        } finally {
+                            this.botTyping = false;
+                        }
+                    },
+
+                    async submitResults() {
+                        try {
+                            // Disable form immediately
+                            this.showResultsForm = false;
+                            this.botTyping = true;
+
+                            // Calculate filled fields (excluding image fields)
+                            const totalFields = 15; // Total number of text fields in results form
+                            const filledFields = Object.entries(this.results)
+                                .filter(([key]) => !key.endsWith('_image')) // Exclude image fields
+                                .filter(([_, value]) => value && value.trim() !== "").length;
+                            
+                            // Add summary message to chat history
+                            this.chatHistory.push({
+                                role: "system",
+                                text: `Results form submitted with ${filledFields}/${totalFields} fields filled out.`
+                            });
+
+                            const formData = new FormData();
+                            formData.append("chat_id", this.currentChatId);
+                            
+                            // Append all results data
+                            Object.keys(this.results).forEach(key => {
+                                if (this.results[key] instanceof File) {
+                                    formData.append(key, this.results[key]);
+                                } else {
+                                    formData.append(key, this.results[key] || '');
+                                }
+                            });
+
+                            console.log("📤 Submitting results data...");
+
+                            try {
+                                const response = await fetch("/upload-results", {
+                                    method: "POST",
+                                    headers: {
+                                        "Authorization": `Bearer ${localStorage.getItem("token")}`
+                                    },
+                                    body: formData
+                                });
+
+                                const data = await response.json();
+                                console.log("✅ Results submitted successfully:", data);
+
+                                // Use typing effect for the response
+                                await this.simulateTyping(`bot - ${this.roles[this.currentRole].gpt_name}`, data.response);
+
+                                // Update stage progression
+                                this.currentStage = Math.max(this.currentStage, this.currentRole + 1);
+                                this.currentRole += 1;
+                                console.log("▶️ Switched to:", this.roles[this.currentRole].gpt_name);
+                            } catch (error) {
+                                console.error("❌ Error submitting results:", error);
+                                alert("❌ Failed to submit results.");
+                                this.showResultsForm = true; // Re-enable form on error
+                            }
+                        } catch (error) {
+                            console.error("❌ Error in submitResults:", error);
+                            alert("Failed to submit results. Please try again.");
+                            this.showResultsForm = true; // Re-enable form on error
+                        } finally {
+                            this.botTyping = false;
+                        }
+                    },
+                    
+                    async setRole(index) {
+                        // Check if trying to access a locked stage
+                        if (index > this.currentStage) {
+                            alert("❌ Please complete the previous stage first!");
+                            return;
+                        }
+                        
+                        // Check dependencies
+                        const targetRole = this.roles[index];
+                        const missingDependencies = [];
+                        
+                        for (const dep of targetRole.dependencies) {
+                            const depIndex = this.roles.findIndex(r => r.gpt_name === dep);
+                            const depMessages = this.chatHistory.filter(msg => 
+                                msg.role === `bot - ${dep}` && msg.text.trim() !== ''
+                            );
+                            
+                            if (depIndex !== -1 && depMessages.length === 0) {
+                                missingDependencies.push(dep);
+                            }
+                        }
+                        
+                        if (missingDependencies.length > 0) {
+                            alert(`Please complete the following stages first: ${missingDependencies.join(", ")}`);
+                            return;
+                        }
+                        
+                        console.log("🔄 Switching to GPT:", this.roles[index].name);
+                        this.currentRole = index;
+
+                        this.$nextTick(() => {
+                            console.log("✅ Role Updated:", this.roles[this.currentRole].gpt_name);
+                        });
+
+                        // ✅ Correctly reference Alpine.js functions
+                        if (this.roles[index].gpt_name === "Methodology") {
+                            console.log("🟢 Opening Methodology Form");
+                            this.showMethodologyForm = true;  // ✅ Correct way
+                        }
+
+                        if (this.roles[index].gpt_name === "Results") {
+                            console.log("🟢 Opening Results Form");
+                            this.showResultsForm = true;  // ✅ Correct way
+                        }
+                    },
+
+                    async simulateTyping(role, fullText) {
+                        this.botTyping = true;
+                        let currentText = "";
+                        let buffer = "";
+                        
+                        // Add initial bot message
+                        this.chatHistory.push({
+                            role: role,
+                            text: ""
+                        });
+                        
+                        for (let i = 0; i < fullText.length; i++) {
+                            const char = fullText[i];
+                            currentText += char;
+                            buffer += char;
+                            
+                            if (buffer.length >= 3 || char === '\n' || char === ' ') {
+                                this.chatHistory.splice(this.chatHistory.length - 1, 1, {
+                                    role: role,
+                                    text: currentText
+                                });
+                                buffer = "";
+                                
+                                // Adjust typing speed to match ChatGPT's style (20% faster)
+                                const delay = char === '\n' ? 240 : // Longer pause at line breaks (was 300)
+                                            char === '.' ? 80 : // Pause at periods (was 100)
+                                            char === '!' || char === '?' ? 120 : // Pause at exclamation/question marks (was 150)
+                                            char === ',' ? 40 : // Pause at commas (was 50)
+                                            char === ' ' ? 24 : // Slight pause at spaces (was 30)
+                                            Math.random() * 16 + 16; // Random delay for natural feel (was 20 + 20)
+                                
+                                await new Promise(resolve => setTimeout(resolve, delay));
+                            }
+                        }
+                        
+                        // Ensure final text is complete
+                        this.chatHistory.splice(this.chatHistory.length - 1, 1, {
+                            role: role,
+                            text: fullText
+                        });
+                        
+                        // Check completion after response
+                        await this.checkAllStagesCompleted();
+                        
+                        this.botTyping = false;
+                    },
+
+                    async newChat() {
+                        const token = localStorage.getItem("token");
+                        if (!token) {
+                            alert("Session expired. Please log in again.");
+                            window.location.href = "/";
+                            return;
+                        }
+        
+                        let response = await fetch('/chat/new', { 
+                            method: 'POST',
+                            headers: { "Authorization": `Bearer ${token}` }
+                        });
+        
+                        let data = await response.json();
+                        if (!response.ok) {
+                            alert("Error creating new chat: " + data.detail);
+                            return;
+                        }
+        
+                        this.currentChatId = data.chat_id;
+                        localStorage.setItem("currentChatId", this.currentChatId);
+                        this.chatHistory = [];
+        
+                        // ✅ Ensure Introduction GPT is unlocked at the start
+                        this.currentStage = 0;
+                        this.currentRole = 0;
+        
+                        console.log("✅ New Chat Created: Chat ID =", this.currentChatId);
+                        console.log("🔓 Stage Unlocked: 0 (Introduction GPT)");
+                    },
+        
+                    async loadChatHistory() {
+                        this.currentChatId = localStorage.getItem("currentChatId");
+                        
+                        if (!this.currentChatId) {
+                            console.warn("⚠️ No chat ID found, creating a new one...");
+                            await this.newChat();
+                        }
+
+                        const token = localStorage.getItem("token");
+                        if (!token) {
+                            alert("Session expired. Please log in again.");
+                            window.location.href = "/";
+                            return;
+                        }
+
+                        let response = await fetch(`/chat-history?chat_id=${this.currentChatId}`, {
+                            headers: { "Authorization": `Bearer ${token}` }
+                        });
+
+                        if (!response.ok) {
+                            console.warn("⚠️ Chat history not found, starting fresh.");
+                            this.chatHistory = [];
+                            return;
+                        }
+
+                        let data = await response.json();
+                        this.chatHistory = data.history || [];
+                        
+                        // Check completion status after loading chat history
+                        await this.checkAllStagesCompleted();
+                    },
+        
+                    async sendMessage() {
+                        if (!this.message.trim() && !['Discussion', 'References', 'Conclusion', 'Abstract'].includes(this.roles[this.currentRole].gpt_name)) {
+                            return;
+                        }
+
+                        // Prevent double submission
+                        if (this.sending) {
+                            return;
+                        }
+        
+                        this.sending = true;
+                        const userMessage = this.message; // Store the message before clearing
+                        const isAutoStage = ['Discussion', 'References', 'Conclusion', 'Abstract'].includes(this.roles[this.currentRole].gpt_name);
+                        
+                        try {
+                            // Immediately add user message to chat history for non-auto stages
+                            if (!isAutoStage) {
+                                this.chatHistory.push({
+                                    role: "user",
+                                    text: userMessage
+                                });
+                                // Clear input field immediately after showing user message
+                                this.message = "";
+                                // Show typing animation immediately after user message
+                                this.botTyping = true;
+                            }
+        
+                            let payload = {
+                                chat_id: this.currentChatId,
+                                gpt_name: this.roles[this.currentRole].gpt_name,
+                                message: userMessage || this.roles[this.currentRole].gpt_name
+                            };
+        
+                            let response = await fetch("/chat", {
+                                method: "POST",
+                                headers: {
+                                    "Content-Type": "application/json",
+                                    "Authorization": `Bearer ${localStorage.getItem("token")}`
+                                },
+                                body: JSON.stringify(payload)
+                            });
+        
+                            let data = await response.json();
+                            
+                            if (data.response) {
+                                // Add status message for auto-generated stages
+                                if (isAutoStage) {
+                                    const statusMessages = {
+                                        'Discussion': 'Generating comprehensive discussion based on previous sections...',
+                                        'References': 'Compiling references and citations...',
+                                        'Conclusion': 'Creating final conclusion...',
+                                        'Abstract': 'Generating abstract...'
+                                    };
+                                    this.chatHistory.push({
+                                        role: "system",
+                                        text: statusMessages[this.roles[this.currentRole].gpt_name]
+                                    });
+                                    // Clear input field for auto stages after showing status message
+                                    this.message = "";
+                                }
+        
+                                // Use typing effect for bot response
+                                await this.simulateTyping(`bot - ${this.roles[this.currentRole].gpt_name}`, data.response);
+                                
+                                // Update stage progression
+                                this.currentStage = Math.max(this.currentStage, this.currentRole + 1);
+                                this.currentRole += 1;
+        
+                                // Check if all stages are completed
+                                if (this.currentRole >= this.roles.length) {
+                                    this.allStagesCompleted = true;
+                                }
+                            }
+                        } catch (error) {
+                            console.error("Error sending message:", error);
+                            alert("Failed to send message. Please try again.");
+                        } finally {
+                            this.sending = false;
+                        }
+                    },
+
+                    async checkAllStagesCompleted() {
+                        const requiredStages = [
+                            "Introduction",
+                            "Review",
+                            "Methodology",
+                            "Results",
+                            "Discussion",
+                            "References",
+                            "Conclusion",
+                            "Abstract"
+                        ];
+
+                        const completedStages = this.chatHistory
+                            .filter(m => m.role.startsWith('bot - '))
+                            .map(m => m.role.replace('bot - ', ''));
+
+                        this.allStagesCompleted = requiredStages.every(stage => 
+                            completedStages.includes(stage)
+                        );
+
+                        // Log stage completion status
+                        console.log("🔍 Checking stages completion:", {
+                            completed: completedStages,
+                            allCompleted: this.allStagesCompleted,
+                            currentRole: this.currentRole,
+                            currentStage: this.currentStage
+                        });
+
+                        // Verify stage order
+                        const stageOrder = completedStages.map(stage => {
+                            const index = requiredStages.indexOf(stage);
+                            return { stage, index };
+                        }).sort((a, b) => a.index - b.index);
+
+                        console.log("📋 Stage order:", stageOrder.map(s => s.stage).join(" -> "));
+                    },
+
+                    async downloadPaper() {
+                        try {
+                            const response = await fetch(`/download-paper/${this.currentChatId}?format=pdf`);
+                            
+                            if (!response.ok) {
+                                const error = await response.json();
+                                throw new Error(error.error || 'Failed to download paper');
+                            }
+
+                            // Create a blob from the PDF stream
+                            const blob = await response.blob();
+                            // Create a link to download the blob
+                            const url = window.URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.href = url;
+                            a.download = 'research_paper.pdf';
+                            document.body.appendChild(a);
+                            a.click();
+                            window.URL.revokeObjectURL(url);
+                            a.remove();
+                        } catch (error) {
+                            console.error('Error downloading paper:', error);
+                            alert('Failed to download paper. Please try again.');
+                        }
+                    },
+
+                    toggleDownloadOptions() {
+                        this.showDownloadOptions = !this.showDownloadOptions;
+                    }
+                };
+            }
+        </script>
+    </div>
+{% endblock %}       
