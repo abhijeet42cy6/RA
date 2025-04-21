@@ -62,6 +62,7 @@ print("✅ OpenAI API Key Loaded Successfully!")
 # Add fallback model configuration
 DEFAULT_MODEL = "gpt-4"
 FALLBACK_MODEL = "gpt-3.5-turbo"
+LARGE_CONTEXT_MODEL = "gpt-4-turbo"  # Model with larger context window
 
 methodology_data = None
 results_data = None
@@ -468,9 +469,17 @@ def get_openai_response(messages, max_retries=3):
             return response.choices[0].message.content
         except Exception as e:
             error_msg = str(e)
+            print(f"⚠️  API error: {error_msg}")
+            
+            # Check for different error types and apply appropriate fallback
             if "insufficient_quota" in error_msg and current_model == DEFAULT_MODEL:
                 print(f"⚠️ Quota exceeded for {current_model}, falling back to {FALLBACK_MODEL}")
                 current_model = FALLBACK_MODEL
+                continue
+            elif "context_length_exceeded" in error_msg:
+                # Switch to a model with larger context window
+                print(f"⚠️ Context length exceeded for {current_model}, falling back to {LARGE_CONTEXT_MODEL}")
+                current_model = LARGE_CONTEXT_MODEL
                 continue
             elif attempt < max_retries - 1:
                 print(f"⚠️ API error, retrying... ({attempt + 1}/{max_retries})")
